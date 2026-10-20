@@ -1,6 +1,9 @@
 
 version: 2.1
 
+orbs:
+  aws-cli: circleci/aws-cli@5.4.1
+
 jobs:
   test-and-build:
     docker:
@@ -8,24 +11,91 @@ jobs:
     working_directory: ~/project
     steps:
       - checkout
+
       - restore_cache:
           keys:
             - npm-v1-{{ checksum "Appcode/package-lock.json" }}
+
       - run:
           name: Install dependencies
           command: cd Appcode && npm ci
+
       - save_cache:
           key: npm-v1-{{ checksum "Appcode/package-lock.json" }}
           paths:
             - Appcode/node_modules
+
       - run:
           name: Run tests
           command: cd Appcode && npm test
+
       - run:
           name: Build production app
           command: cd Appcode && npm run build
 
+  build-and-push:
+    docker:
+      - image: cimg/node:22.20
+    working_directory: ~/project
+    environment:
+      AWS_DEFAULT_REGION: ap-south-1
+      ECR_REGISTRY: 232428702881.dkr.ecr.ap-south-1.amazonaws.com
+      ECR_REPOSITORY_URI: 232428702881.dkr.ecr.ap-south-1.amazonaws.com/todo-gitops-app
+
+    steps:
+      - checkout
+
+      - setup_remote_docker:
+          docker_layer_caching: false
+
+      - aws-cli/setup:
+          role_arn: arn:aws:iam::232428702881:role/CircleCI-ECR-Push-Role
+          region: ap-south-1
+          role_session_name: circleci-todo-ecr-push
+          session_duration: "1800"
+
+      - run:
+          name: Verify AWS OIDC authentication
+          command: aws sts get-caller-identity
+
+      - run:
+          name: Login to Amazon ECR
+          command: |
+            aws ecr get-login-password \
+              --region "$AWS_DEFAULT_REGION" \
+              | docker login \
+                  --username AWS \
+                  --password-stdin "$ECR_REGISTRY"
+
+      - run:
+          name: Build Docker image
+          command: |
+            docker build \
+              -t "$ECR_REPOSITORY_URI:$CIRCLE_SHA1" \
+              Appcode
+
+      - run:
+          name: Push commit-tagged image
+          command: |
+            docker push "$ECR_REPOSITORY_URI:$CIRCLE_SHA1"
+
+      - run:
+          name: Tag and push latest image
+          command: |
+            docker tag \
+              "$ECR_REPOSITORY_URI:$CIRCLE_SHA1" \
+              "$ECR_REPOSITORY_URI:latest"
+
+            docker push "$ECR_REPOSITORY_URI:latest"
+
 workflows:
-  todo-ci:
+  todo-ci-cd:
     jobs:
       - test-and-build
+
+      - build-and-push:
+          requires:
+            - test-and-build
+          filters:
+            branches:
+              only: main
