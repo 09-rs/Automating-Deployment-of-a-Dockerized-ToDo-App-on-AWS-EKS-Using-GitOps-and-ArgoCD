@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: todo-app
-          image: REPLACE_WITH_ECR_IMAGE
+       image: 232428702881.dkr.ecr.ap-south-1.amazonaws.com/todo-gitops-app:2f2918eb4e770c9cc0841538863ee9d41a58ca04
           imagePullPolicy: Always
           ports:
             - name: http
