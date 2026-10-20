@@ -1,0 +1,31 @@
+
+version: 2.1
+
+jobs:
+  test-and-build:
+    docker:
+      - image: cimg/node:22.20
+    working_directory: ~/project
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-v1-{{ checksum "Appcode/package-lock.json" }}
+      - run:
+          name: Install dependencies
+          command: cd Appcode && npm ci
+      - save_cache:
+          key: npm-v1-{{ checksum "Appcode/package-lock.json" }}
+          paths:
+            - Appcode/node_modules
+      - run:
+          name: Run tests
+          command: cd Appcode && npm test
+      - run:
+          name: Build production app
+          command: cd Appcode && npm run build
+
+workflows:
+  todo-ci:
+    jobs:
+      - test-and-build

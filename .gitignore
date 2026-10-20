@@ -1,0 +1,41 @@
+
+# Node.js dependencies and build output
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+coverage/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials
+credentials.*
+.aws/
+
+# Terraform local files and state
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.plan
+crash.log
+crash.*.log
+*.tfvars
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Local tooling and operating-system files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local source archive; source should be tracked separately
+Appcode.zip
